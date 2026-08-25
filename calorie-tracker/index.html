@@ -1,1 +1,333 @@
-hgg
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macro & Calorie Tracker</title>
+    <style>
+        :root {
+            --bg: #f4f4f5;
+            --card-bg: #ffffff;
+            --text: #18181b;
+            --border: #e4e4e7;
+            
+            --cals-bg: #e0f2fe;
+            --cals-txt: #0369a1;
+            
+            --protein-bg: #dcfce7;
+            --protein-txt: #15803d;
+            
+            --carbs-bg: #fef08a;
+            --carbs-txt: #a16207;
+            
+            --fats-bg: #ffedd5;
+            --fats-txt: #c2410c;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Dashboard Styles */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-box {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-box h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
+        .stat-box p { margin: 0; font-size: 1.5rem; font-weight: bold; }
+        .stat-box small { font-size: 0.85rem; opacity: 0.8; }
+
+        .stat-cals { background: var(--cals-bg); color: var(--cals-txt); }
+        .stat-protein { background: var(--protein-bg); color: var(--protein-txt); }
+        .stat-carbs { background: var(--carbs-bg); color: var(--carbs-txt); }
+        .stat-fats { background: var(--fats-bg); color: var(--fats-txt); }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            height: 42px;
+        }
+
+        button:hover { background-color: #1d4ed8; }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th { font-weight: 600; color: #71717a; }
+
+        .delete-btn {
+            background-color: #ef4444;
+            padding: 6px 12px;
+            height: auto;
+            font-size: 0.85rem;
+        }
+        
+        .delete-btn:hover { background-color: #dc2626; }
+
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Macro & Calorie Tracker</h1>
+
+    <!-- Goals Settings -->
+    <div class="card">
+        <h3>Daily Goals</h3>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+            <div class="input-group">
+                <label>Calories</label>
+                <input type="number" id="goal-cals" value="2000" onchange="updateDashboard()">
+            </div>
+            <div class="input-group">
+                <label>Protein (g)</label>
+                <input type="number" id="goal-protein" value="150" onchange="updateDashboard()">
+            </div>
+            <div class="input-group">
+                <label>Carbs (g)</label>
+                <input type="number" id="goal-carbs" value="200" onchange="updateDashboard()">
+            </div>
+            <div class="input-group">
+                <label>Fats (g)</label>
+                <input type="number" id="goal-fats" value="65" onchange="updateDashboard()">
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="card dashboard">
+        <div class="stat-box stat-cals">
+            <h3>Calories</h3>
+            <p><span id="total-cals">0</span></p>
+            <small>Goal: <span id="display-goal-cals">2000</span></small>
+        </div>
+        <div class="stat-box stat-protein">
+            <h3>Protein</h3>
+            <p><span id="total-protein">0</span>g</p>
+            <small>Goal: <span id="display-goal-protein">150</span>g</small>
+        </div>
+        <div class="stat-box stat-carbs">
+            <h3>Carbs</h3>
+            <p><span id="total-carbs">0</span>g</p>
+            <small>Goal: <span id="display-goal-carbs">200</span>g</small>
+        </div>
+        <div class="stat-box stat-fats">
+            <h3>Fats</h3>
+            <p><span id="total-fats">0</span>g</p>
+            <small>Goal: <span id="display-goal-fats">65</span>g</small>
+        </div>
+    </div>
+
+    <!-- Add Food Form -->
+    <div class="card">
+        <h3>Log Food</h3>
+        <form id="food-form" class="form-grid">
+            <div class="input-group">
+                <label>Food Name</label>
+                <input type="text" id="food-name" required placeholder="e.g., Chicken Breast">
+            </div>
+            <div class="input-group">
+                <label>Calories</label>
+                <input type="number" id="food-cals" required min="0">
+            </div>
+            <div class="input-group">
+                <label>Protein (g)</label>
+                <input type="number" id="food-protein" required min="0">
+            </div>
+            <div class="input-group">
+                <label>Carbs (g)</label>
+                <input type="number" id="food-carbs" required min="0">
+            </div>
+            <div class="input-group">
+                <label>Fats (g)</label>
+                <input type="number" id="food-fats" required min="0">
+            </div>
+            <button type="submit">Add Food</button>
+        </form>
+    </div>
+
+    <!-- Food Log Table -->
+    <div class="card">
+        <h3>Today's Log</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Food</th>
+                    <th>Calories</th>
+                    <th>Protein</th>
+                    <th>Carbs</th>
+                    <th>Fats</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="food-log-body">
+                <!-- Food items will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // State to hold our logged foods
+    let foodLog = [];
+
+    // Form submission listener
+    document.getElementById('food-form').addEventListener('submit', function(e) {
+        e.preventDefault(); // Prevent page refresh
+        
+        // Get values from form
+        const foodItem = {
+            id: Date.now(), // unique ID for deletion
+            name: document.getElementById('food-name').value,
+            cals: parseInt(document.getElementById('food-cals').value) || 0,
+            protein: parseInt(document.getElementById('food-protein').value) || 0,
+            carbs: parseInt(document.getElementById('food-carbs').value) || 0,
+            fats: parseInt(document.getElementById('food-fats').value) || 0
+        };
+
+        // Add to array and update UI
+        foodLog.push(foodItem);
+        this.reset(); // Clear form
+        updateUI();
+    });
+
+    // Function to remove an item
+    function deleteFood(id) {
+        foodLog = foodLog.filter(food => food.id !== id);
+        updateUI();
+    }
+
+    // Main function to update calculations and HTML
+    function updateUI() {
+        updateDashboard();
+        renderTable();
+    }
+
+    // Update the top dashboard numbers
+    function updateDashboard() {
+        // Calculate totals
+        let totalCals = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
+        
+        foodLog.forEach(food => {
+            totalCals += food.cals;
+            totalProtein += food.protein;
+            totalCarbs += food.carbs;
+            totalFats += food.fats;
+        });
+
+        // Update DOM elements for totals
+        document.getElementById('total-cals').textContent = totalCals;
+        document.getElementById('total-protein').textContent = totalProtein;
+        document.getElementById('total-carbs').textContent = totalCarbs;
+        document.getElementById('total-fats').textContent = totalFats;
+
+        // Sync Goal Inputs to Dashboard Display
+        document.getElementById('display-goal-cals').textContent = document.getElementById('goal-cals').value;
+        document.getElementById('display-goal-protein').textContent = document.getElementById('goal-protein').value;
+        document.getElementById('display-goal-carbs').textContent = document.getElementById('goal-carbs').value;
+        document.getElementById('display-goal-fats').textContent = document.getElementById('goal-fats').value;
+    }
+
+    // Render the list of foods into the table
+    function renderTable() {
+        const tbody = document.getElementById('food-log-body');
+        tbody.innerHTML = ''; // Clear current table
+
+        foodLog.forEach(food => {
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td><strong>${food.name}</strong></td>
+                <td>${food.cals}</td>
+                <td>${food.protein}g</td>
+                <td>${food.carbs}g</td>
+                <td>${food.fats}g</td>
+                <td>
+                    <button class="delete-btn" onclick="deleteFood(${food.id})">Delete</button>
+                </td>
+            `;
+            
+            tbody.appendChild(tr);
+        });
+    }
+</script>
+
+</body>
+</html>
