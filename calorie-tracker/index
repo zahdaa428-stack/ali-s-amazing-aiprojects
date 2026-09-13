@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Laser Bee Hunter</title>
+<style>
+  body { 
+    margin: 0; padding: 0; background-color: #1a1a2e; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    overflow: hidden; touch-action: none; user-select: none;
+  }
+
+  /* UI & Shop Buttons */
+  #ui { 
+    position: absolute; top: 15px; left: 15px; font-size: 20px; 
+    font-weight: bold; color: white; z-index: 10; 
+    background: rgba(0, 0, 0, 0.5); padding: 10px 20px;
+    border-radius: 15px; border: 2px solid #FFD700;
+  }
+  #shop-btn {
+    position: absolute; top: 15px; right: 15px; padding: 10px 20px;
+    font-size: 18px; font-weight: bold; background: #FF4500; color: white;
+    border: none; border-radius: 15px; cursor: pointer; z-index: 10;
+  }
+  
+  #game-area { width: 100vw; height: 100vh; position: relative; }
+  
+  /* The Bee */
+  .bee {
+    width: 100px; height: 100px; position: absolute; top: 0; left: 0; 
+    cursor: crosshair; display: none; border-radius: 50%;
+    background: repeating-linear-gradient(90deg, #FFD700 0px, #FFD700 20px, #000 20px, #000 40px);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform; z-index: 5;
+  }
+
+  /* Health Bar */
+  #hp-bar-container {
+    position: absolute; bottom: -20px; left: 10%; width: 80%; height: 8px;
+    background: red; border-radius: 4px; overflow: hidden;
+  }
+  #hp-bar { width: 100%; height: 100%; background: #00FF00; transition: width 0.1s; }
+
+  /* Menus (Start & Shop) */
+  .modal {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; z-index: 20; text-align: center;
+  }
+  h1 { font-size: 3rem; color: #FFD700; text-shadow: 0 0 10px #FFD700; }
+  .shop-item {
+    background: rgba(255,255,255,0.1); margin: 10px; padding: 15px;
+    border-radius: 10px; border: 1px solid #FFD700; width: 300px;
+  }
+  button.action-btn { 
+    padding: 12px 30px; font-size: 1.2rem; border-radius: 8px; margin-top: 10px;
+    border: none; background: #FFD700; color: #000; font-weight: bold; cursor: pointer;
+  }
+  button.action-btn:active { transform: translateY(2px); }
+
+  /* Floating Damage Text */
+  .floating-text {
+    position: absolute; color: #FF4500; font-weight: bold; font-size: 24px;
+    text-shadow: 1px 1px 0 #fff; pointer-events: none; z-index: 15;
+    animation: floatUp 0.6s ease-out forwards;
+  }
+  @keyframes floatUp {
+    0% { transform: translate(-50%, -20px) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -60px) scale(1.5); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">Level: <span id="levelDisplay">1</span> | Honey: <span id="honeyDisplay">0</span></div>
+<button id="shop-btn">Open Market</button>
+
+<div id="game-area">
+  <div id="target" class="bee">
+    <div id="hp-bar-container"><div id="hp-bar"></div></div>
+  </div>
+</div>
+
+<!-- Start Menu -->
+<div id="message-screen" class="modal">
+  <h1 id="message-title">Laser Bee Hunter</h1>
+  <p id="message-text">Shoot the bee to earn Honey. Buy better lasers in the Market!</p>
+  <button class="action-btn" id="start-btn">Start Game</button>
+</div>
+
+<!-- Market Menu -->
+<div id="shop-screen" class="modal" style="display: none;">
+  <h1>Laser Market</h1>
+  <p>Honey available: <span id="shop-honey">0</span></p>
+  
+  <div class="shop-item">
+    <h3>Blue Blaster (2 Dmg)</h3>
+    <p>Cost: 15 Honey</p>
+    <button class="action-btn" onclick="buyLaser(15, 2, '#00FFFF', this)">Buy</button>
+  </div>
+  
+  <div class="shop-item">
+    <h3>Plasma Cannon (5 Dmg)</h3>
+    <p>Cost: 50 Honey</p>
+    <button class="action-btn" onclick="buyLaser(50, 5, '#FF00FF', this)">Buy</button>
+  </div>
+
+  <button class="action-btn" onclick="closeShop()" style="margin-top: 30px;">Back to Game</button>
+</div>
+
+<script>
+  let level = 1;
+  let honey = 0;
+  let moveSpeed = 1500; 
+  let currentScale = 1.0; 
+  let gameInterval;
+  
+  // Player Stats
+  let playerDamage = 1;
+  let laserColor = '#FF0000'; // Default Red
+  
+  // Bee Stats
+  let beeMaxHp = 3;
+  let beeHp = 3;
+
+  const bee = document.getElementById('target');
+  const hpBar = document.getElementById('hp-bar');
+  const levelDisplay = document.getElementById('levelDisplay');
+  const honeyDisplay = document.getElementById('honeyDisplay');
+  const shopHoney = document.getElementById('shop-honey');
+  const messageScreen = document.getElementById('message-screen');
+  const shopScreen = document.getElementById('shop-screen');
+
+  function moveBee() {
+    const size = 100 * currentScale;
+    const maxX = window.innerWidth - size;
+    const maxY = window.innerHeight - size - 50; 
+    const randomX = Math.max(10, Math.floor(Math.random() * maxX) - 10);
+    const randomY = Math.max(100, Math.floor(Math.random() * maxY) - 10); 
+    bee.style.transform = `translate(${randomX}px, ${randomY}px) scale(${currentScale})`;
+  }
+
+  function startGame() {
+    messageScreen.style.display = 'none';
+    bee.style.display = 'block';
+    spawnBee();
+  }
+
+  function spawnBee() {
+    beeHp = beeMaxHp;
+    updateHpBar();
+    bee.style.transition = `transform ${Math.max(0.2, moveSpeed / 2000)}s cubic-bezier(0.25, 1, 0.5, 1)`;
+    moveBee();
+    clearInterval(gameInterval);
+    gameInterval = setInterval(moveBee, moveSpeed);
+  }
+
+  function nextLevel() {
+    level++;
+    beeMaxHp += Math.floor(level * 1.5); // Bee gets more health
+    moveSpeed = Math.max(500, moveSpeed * 0.9); // Gets faster
+    currentScale = Math.max(0.4, currentScale * 0.95); // Gets smaller
+    levelDisplay.innerText = level;
+    spawnBee();
+  }
+
+  function updateHpBar() {
+    const pct = Math.max(0, (beeHp / beeMaxHp) * 100);
+    hpBar.style.width = pct + '%';
+  }
+
+  // Draw Laser Beam
+  function fireLaser(targetX, targetY) {
+    const laser = document.createElement('div');
+    laser.style.position = 'absolute';
+    laser.style.bottom = '0';
+    laser.style.left = '50vw';
+    laser.style.width = (playerDamage * 2) + 'px'; // Thicker beam for more damage
+    laser.style.background = laserColor;
+    laser.style.boxShadow = `0 0 15px ${laserColor}, 0 0 5px #FFF`;
+    laser.style.pointerEvents = 'none';
+    laser.style.zIndex = '8';
+
+    const dx = targetX - (window.innerWidth / 2);
+    const dy = window.innerHeight - targetY;
+    const length = Math.sqrt(dx*dx + dy*dy);
+    const angle = Math.atan2(dx, dy) * (180 / Math.PI);
+
+    laser.style.height = length + 'px';
+    laser.style.transformOrigin = 'bottom center';
+    laser.style.transform = `rotate(${angle}deg)`;
+    document.body.appendChild(laser);
+    setTimeout(() => laser.remove(), 150); // Beam disappears quickly
+  }
+
+  function showDamage(x, y, amount) {
+    const text = document.createElement('div');
+    text.innerText = `-${amount}`;
+    text.className = "floating-text";
+    text.style.left = x + 'px';
+    text.style.top = y + 'px';
+    document.body.appendChild(text);
+    setTimeout(() => text.remove(), 600);
+  }
+
+  // Shop Logic
+  document.getElementById('shop-btn').addEventListener('click', () => {
+    shopScreen.style.display = 'flex';
+    shopHoney.innerText = honey;
+    clearInterval(gameInterval); // Pause game
+  });
+
+  function closeShop() {
+    shopScreen.style.display = 'none';
+    if (messageScreen.style.display === 'none') {
+      gameInterval = setInterval(moveBee, moveSpeed); // Resume game
+    }
+  }
+
+  function buyLaser(cost, dmg, color, btn) {
+    if (honey >= cost) {
+      honey -= cost;
+      playerDamage = dmg;
+      laserColor = color;
+      honeyDisplay.innerText = honey;
+      shopHoney.innerText = honey;
+      btn.innerText = "Equipped";
+      btn.style.background = "gray";
+      btn.disabled = true;
+    } else {
+      btn.innerText = "Not enough Honey!";
+      setTimeout(() => btn.innerText = "Buy", 1000);
+    }
+  }
+
+  // Shooting mechanics
+  document.addEventListener('pointerdown', function(e) {
+    if (messageScreen.style.display !== 'none' || shopScreen.style.display !== 'none') return;
+    if (e.target.id === 'shop-btn') return;
+    
+    fireLaser(e.clientX, e.clientY);
+
+    if (e.target === bee || bee.contains(e.target)) {
+      beeHp -= playerDamage;
+      updateHpBar();
+      showDamage(e.clientX, e.clientY, playerDamage);
+      
+      if (beeHp <= 0) {
+        // Bee caught!
+        honey += beeMaxHp; // Give honey based on bee's total health
+        honeyDisplay.innerText = honey;
+        nextLevel();
+      } else {
+        // Bee runs away when shot
+        moveBee(); 
+        clearInterval(gameInterval);
+        gameInterval = setInterval(moveBee, moveSpeed); 
+      }
+    }
+  });
+
+  document.getElementById('start-btn').addEventListener('click', startGame);
+</script>
+</body>
+</html>
