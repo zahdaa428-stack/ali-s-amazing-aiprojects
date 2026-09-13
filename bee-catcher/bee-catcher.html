@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Majestic Bee Catcher</title>
+<style>
+  body { 
+    margin: 0; padding: 0; background-color: #87CEEB; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    overflow: hidden; 
+    touch-action: none; /* Prevents zooming/scrolling on mobile */
+    user-select: none; /* Prevents text selection on rapid clicks */
+  }
+
+  /* Enhanced UI */
+  #ui { 
+    position: absolute; top: 15px; left: 15px; font-size: 24px; 
+    font-weight: bold; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); 
+    z-index: 10; background: rgba(0, 0, 0, 0.3); padding: 10px 20px;
+    border-radius: 20px; border: 2px solid #FFD700;
+  }
+  
+  #game-area { width: 100vw; height: 100vh; position: relative; }
+  
+  /* Upgraded Bee - Expanded size & hardware-accelerated movement */
+  .bee {
+    width: 100px; height: 100px; /* Expanded Size */
+    position: absolute; top: 0; left: 0; cursor: pointer; display: none;
+    border-radius: 50%;
+    /* Smooth CSS gradients for stripes */
+    background: repeating-linear-gradient(
+      90deg,
+      #FFD700 0px, #FFD700 20px,
+      #000 20px, #000 40px
+    );
+    box-shadow: inset -10px -10px 20px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+    /* Using transform instead of top/left for butter-smooth movement */
+    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform;
+    z-index: 5;
+  }
+
+  /* Flapping Wings */
+  .bee::before, .bee::after {
+    content: ''; position: absolute;
+    width: 50px; height: 50px;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    top: -20px; z-index: -1;
+    border: 2px solid rgba(200, 200, 200, 0.5);
+    animation: flap 0.08s infinite alternate linear;
+  }
+  .bee::before { left: 5px; transform-origin: bottom right; }
+  .bee::after { right: 5px; transform-origin: bottom left; }
+  
+  @keyframes flap {
+    0% { transform: rotate(15deg) scaleY(1); }
+    100% { transform: rotate(-35deg) scaleY(0.7); }
+  }
+
+  /* The Catcher Net Animation */
+  .net {
+    position: absolute; width: 90px; height: 90px;
+    border: 5px solid #E8E8E8; border-radius: 50%;
+    pointer-events: none; /* Allows clicks to pass through */
+    transform: translate(-50%, -50%) scale(1.4) rotate(-30deg);
+    opacity: 1;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-in;
+    z-index: 8;
+  }
+  
+  /* Net Mesh */
+  .net::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 50%;
+    background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%, #fff),
+                      linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%, #fff);
+    background-size: 10px 10px; background-position: 0 0, 5px 5px; opacity: 0.3;
+  }
+
+  /* Net Handle */
+  .net::after {
+    content: ''; position: absolute; width: 10px; height: 70px;
+    background: #8B4513; border-radius: 5px;
+    bottom: -65px; left: 50%; transform: translateX(-50%);
+    box-shadow: inset 2px 0 5px rgba(0,0,0,0.5);
+  }
+
+  /* Triggered state of the net */
+  .net.swing { transform: translate(-50%, -50%) scale(0.8) rotate(30deg); opacity: 0; }
+
+  /* Floating Honey Text */
+  .floating-text {
+    position: absolute; color: #FFD700; font-weight: bold; font-size: 28px;
+    text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 15;
+    animation: floatUp 0.8s ease-out forwards;
+  }
+  
+  @keyframes floatUp {
+    0% { transform: translate(-50%, -20px) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -80px) scale(1.2); opacity: 0; }
+  }
+
+  /* Menus */
+  #message-screen {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); color: white; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; z-index: 20; text-align: center;
+  }
+  h1 { font-size: 3.5rem; margin-bottom: 10px; color: #FFD700; text-shadow: 0 0 15px #FFD700; }
+  p { font-size: 1.5rem; margin-bottom: 30px; max-width: 80%; }
+  
+  button { 
+    padding: 15px 40px; font-size: 1.5rem; border-radius: 12px; 
+    border: none; background: #FFD700; color: #000; font-weight: bold;
+    cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: background 0.2s;
+  }
+  button:hover { background: #ffea70; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body>
+
+<div id="ui">Level: <span id="levelDisplay">1</span> | Honey: <span id="scoreDisplay">0</span>/<span id="targetDisplay">5</span></div>
+
+<div id="game-area">
+  <div id="target" class="bee"></div>
+</div>
+
+<div id="message-screen">
+  <h1 id="message-title">Majestic Bee Catcher</h1>
+  <p id="message-text">Use your net to catch the bee and collect Honey!</p>
+  <button id="action-btn">Start Game</button>
+</div>
+
+<script>
+  let level = 1;
+  let honey = 0; // Upgraded currency
+  let targetHoney = 5;
+  let moveSpeed = 1500; 
+  let currentScale = 1.0; // Using CSS transform scale for better performance
+  let gameInterval;
+  const baseBeeSize = 100;
+  
+  const bee = document.getElementById('target');
+  const levelDisplay = document.getElementById('levelDisplay');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const targetDisplay = document.getElementById('targetDisplay');
+  const messageScreen = document.getElementById('message-screen');
+  const messageTitle = document.getElementById('message-title');
+  const messageText = document.getElementById('message-text');
+  const actionBtn = document.getElementById('action-btn');
+
+  function moveBee() {
+    const actualSize = baseBeeSize * currentScale;
+    const maxX = window.innerWidth - actualSize;
+    const maxY = window.innerHeight - actualSize;
+    
+    // Keep bee safely within the screen bounds and below the UI
+    const randomX = Math.max(10, Math.floor(Math.random() * maxX) - 10);
+    const randomY = Math.max(90, Math.floor(Math.random() * maxY) - 10); 
+    
+    // Hardware-accelerated movement combined with scaling
+    bee.style.transform = `translate(${randomX}px, ${randomY}px) scale(${currentScale})`;
+  }
+
+  function startGame() {
+    messageScreen.style.display = 'none';
+    honey = 0;
+    updateUI();
+    
+    bee.style.display = 'block';
+    
+    // Set dynamic transition speed based on current level difficulty
+    bee.style.transition = `transform ${Math.max(0.2, moveSpeed / 2000)}s cubic-bezier(0.25, 1, 0.5, 1)`;
+    
+    moveBee();
+    gameInterval = setInterval(moveBee, moveSpeed);
+  }
+
+  function levelUp() {
+    clearInterval(gameInterval);
+    bee.style.display = 'none';
+    level++;
+    
+    // Infinite Levels Scaling Logic
+    targetHoney += Math.floor(2 + (level * 1.5)); // Requires progressively more honey
+    moveSpeed = Math.max(450, moveSpeed * 0.82); // Gets faster, caps at 450ms
+    currentScale = Math.max(0.35, currentScale * 0.88); // Gets smaller, caps at 35% size
+    
+    messageTitle.innerText = "Level Complete!";
+    messageText.innerText = `Great catch! In Level ${level}, the bee is faster and smaller. Collect ${targetHoney} Honey to advance!`;
+    actionBtn.innerText = "Next Level";
+    
+    messageScreen.style.display = 'flex';
+  }
+
+  function updateUI() {
+    levelDisplay.innerText = level;
+    scoreDisplay.innerText = honey;
+    targetDisplay.innerText = targetHoney;
+  }
+
+  // Animation: Create floating text
+  function showFloatingText(x, y) {
+    const text = document.createElement('div');
+    text.innerText = "+1 Honey";
+    text.className = "floating-text";
+    text.style.left = x + 'px';
+    text.style.top = y + 'px';
+    document.body.appendChild(text);
+    setTimeout(() => text.remove(), 800); // Cleanup DOM
+  }
+
+  // Animation: Swing the catcher net
+  function swingNet(x, y) {
+    const net = document.createElement('div');
+    net.classList.add('net');
+    net.style.left = x + 'px';
+    net.style.top = y + 'px';
+    document.body.appendChild(net);
+
+    // Trigger CSS reflow to ensure the transition plays
+    void net.offsetWidth; 
+    net.classList.add('swing');
+
+    setTimeout(() => net.remove(), 250); // Cleanup DOM
+  }
+
+  // Modern pointerdown handles both Mouse Clicks and Touch Screens smoothly
+  document.addEventListener('pointerdown', function(e) {
+    // Ignore clicks if a menu is open or clicking a button
+    if (messageScreen.style.display !== 'none' || e.target.id === 'action-btn') return;
+    
+    // Spawn the net at exact click/tap coordinates
+    swingNet(e.clientX, e.clientY);
+
+    // Check if the bee was hit
+    if (e.target === bee || bee.contains(e.target)) {
+      honey++;
+      updateUI();
+      showFloatingText(e.clientX, e.clientY);
+      
+      // Instantly move bee to run away and reset the interval
+      moveBee(); 
+      clearInterval(gameInterval);
+      gameInterval = setInterval(moveBee, moveSpeed); 
+      
+      if (honey >= targetHoney) {
+        setTimeout(levelUp, 150); // Tiny delay so you see the final catch
+      }
+    }
+  });
+
+  actionBtn.addEventListener('click', startGame);
+</script>
+</body>
+</html>
