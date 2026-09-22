@@ -1,333 +1,451 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Macro & Calorie Tracker</title>
-    <style>
-        :root {
-            --bg: #f4f4f5;
-            --card-bg: #ffffff;
-            --text: #18181b;
-            --border: #e4e4e7;
-            
-            --cals-bg: #e0f2fe;
-            --cals-txt: #0369a1;
-            
-            --protein-bg: #dcfce7;
-            --protein-txt: #15803d;
-            
-            --carbs-bg: #fef08a;
-            --carbs-txt: #a16207;
-            
-            --fats-bg: #ffedd5;
-            --fats-txt: #c2410c;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Macro & Calorie Tracker</title>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f4f4f5;
+      --card-bg: #ffffff;
+      --text: #18181b;
+      --border: #e4e4e7;
+      --muted: #71717a;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --cals-bg: #e0f2fe; --cals-txt: #0369a1;
+      --protein-bg: #dcfce7; --protein-txt: #15803d;
+      --carbs-bg: #fef08a; --carbs-txt: #a16207;
+      --fats-bg: #ffedd5; --fats-txt: #c2410c;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 20px;
+    }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 20px; }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+    /* Navigation / View Switcher */
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
 
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
+    .nav-btn {
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
-        /* Dashboard Styles */
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
+    .nav-btn.active {
+      background-color: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
 
-        .stat-box {
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
+    .view { display: none; }
+    .view.active { display: block; }
 
-        .stat-box h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
-        .stat-box p { margin: 0; font-size: 1.5rem; font-weight: bold; }
-        .stat-box small { font-size: 0.85rem; opacity: 0.8; }
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
 
-        .stat-cals { background: var(--cals-bg); color: var(--cals-txt); }
-        .stat-protein { background: var(--protein-bg); color: var(--protein-txt); }
-        .stat-carbs { background: var(--carbs-bg); color: var(--carbs-txt); }
-        .stat-fats { background: var(--fats-bg); color: var(--fats-txt); }
+    /* Dashboard & Controls */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
 
-        /* Form Styles */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-            gap: 12px;
-            align-items: end;
-        }
+    .stat-box { padding: 16px; border-radius: 12px; text-align: center; }
+    .stat-box h3 { margin: 0 0 6px 0; font-size: 1rem; }
+    .stat-box p { margin: 0; font-size: 1.4rem; font-weight: bold; }
 
-        .input-group {
-            display: flex;
-            flex-direction: column;
-        }
+    .stat-cals { background: var(--cals-bg); color: var(--cals-txt); }
+    .stat-protein { background: var(--protein-bg); color: var(--protein-txt); }
+    .stat-carbs { background: var(--carbs-bg); color: var(--carbs-txt); }
+    .stat-fats { background: var(--fats-bg); color: var(--fats-txt); }
 
-        .input-group label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 2fr;
+      gap: 12px;
+      align-items: center;
+    }
 
-        input {
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 1rem;
-        }
+    /* Form Elements */
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+    input, select {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 1rem;
+      background: #fff;
+    }
 
-        button {
-            padding: 10px 20px;
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            height: 42px;
-        }
+    button.btn-primary {
+      padding: 12px 20px;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.btn-primary:hover { background-color: var(--primary-hover); }
 
-        button:hover { background-color: #1d4ed8; }
+    /* Table Styles */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
+    th { font-weight: 600; color: var(--muted); }
 
-        /* Table Styles */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      text-transform: capitalize;
+      background: var(--bg);
+      font-weight: 600;
+    }
 
-        th, td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        th { font-weight: 600; color: #71717a; }
-
-        .delete-btn {
-            background-color: #ef4444;
-            padding: 6px 12px;
-            height: auto;
-            font-size: 0.85rem;
-        }
-        
-        .delete-btn:hover { background-color: #dc2626; }
-
-        @media (max-width: 768px) {
-            .form-grid { grid-template-columns: 1fr; }
-            button { width: 100%; }
-        }
-    </style>
+    /* Empty and Error States */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    .char-count { font-size: 0.8rem; color: var(--muted); text-align: right; }
+    
+    @media (max-width: 768px) {
+      .controls-grid { grid-template-columns: 1fr; }
+      nav { flex-direction: row; }
+      .nav-btn { flex: 1; text-align: center; }
+    }
+  </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Macro & Calorie Tracker</h1>
+  <h1>Macro & Calorie Tracker</h1>
 
-    <!-- Goals Settings -->
+  <!-- Navigation View Switcher (Criterion 3) -->
+  <nav>
+    <button class="nav-btn active" id="btn-view-logs">View Food Log</button>
+    <button class="nav-btn" id="btn-add-log">Log New Food</button>
+  </nav>
+
+  <!-- VIEW 1: VIEW LOGS -->
+  <section id="view-display" class="view active">
     <div class="card">
-        <h3>Daily Goals</h3>
-        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
-            <div class="input-group">
-                <label>Calories</label>
-                <input type="number" id="goal-cals" value="2000" onchange="updateDashboard()">
-            </div>
-            <div class="input-group">
-                <label>Protein (g)</label>
-                <input type="number" id="goal-protein" value="150" onchange="updateDashboard()">
-            </div>
-            <div class="input-group">
-                <label>Carbs (g)</label>
-                <input type="number" id="goal-carbs" value="200" onchange="updateDashboard()">
-            </div>
-            <div class="input-group">
-                <label>Fats (g)</label>
-                <input type="number" id="goal-fats" value="65" onchange="updateDashboard()">
-            </div>
-        </div>
-    </div>
-
-    <!-- Dashboard -->
-    <div class="card dashboard">
+      <div class="dashboard">
         <div class="stat-box stat-cals">
-            <h3>Calories</h3>
-            <p><span id="total-cals">0</span></p>
-            <small>Goal: <span id="display-goal-cals">2000</span></small>
+          <h3>Total Calories</h3>
+          <p><span id="total-cals">0</span> kcal</p>
         </div>
         <div class="stat-box stat-protein">
-            <h3>Protein</h3>
-            <p><span id="total-protein">0</span>g</p>
-            <small>Goal: <span id="display-goal-protein">150</span>g</small>
+          <h3>Protein</h3>
+          <p><span id="total-protein">0</span>g</p>
         </div>
         <div class="stat-box stat-carbs">
-            <h3>Carbs</h3>
-            <p><span id="total-carbs">0</span>g</p>
-            <small>Goal: <span id="display-goal-carbs">200</span>g</small>
+          <h3>Carbs</h3>
+          <p><span id="total-carbs">0</span>g</p>
         </div>
         <div class="stat-box stat-fats">
-            <h3>Fats</h3>
-            <p><span id="total-fats">0</span>g</p>
-            <small>Goal: <span id="display-goal-fats">65</span>g</small>
+          <h3>Fats</h3>
+          <p><span id="total-fats">0</span>g</p>
         </div>
+      </div>
+
+      <div class="controls-grid">
+        <div class="form-group">
+          <label for="filter-meal">Filter by Meal</label>
+          <select id="filter-meal">
+            <option value="all">All Meals</option>
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="sort-by">Sort By</label>
+          <select id="sort-by">
+            <option value="added_at-desc">Newest First</option>
+            <option value="calories-desc">Highest Calories</option>
+            <option value="protein-desc">Highest Protein</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="search-input">Search Food Name</label>
+          <input type="text" id="search-input" placeholder="e.g. Chicken, Oats...">
+        </div>
+      </div>
     </div>
 
-    <!-- Add Food Form -->
     <div class="card">
-        <h3>Log Food</h3>
-        <form id="food-form" class="form-grid">
-            <div class="input-group">
-                <label>Food Name</label>
-                <input type="text" id="food-name" required placeholder="e.g., Chicken Breast">
-            </div>
-            <div class="input-group">
-                <label>Calories</label>
-                <input type="number" id="food-cals" required min="0">
-            </div>
-            <div class="input-group">
-                <label>Protein (g)</label>
-                <input type="number" id="food-protein" required min="0">
-            </div>
-            <div class="input-group">
-                <label>Carbs (g)</label>
-                <input type="number" id="food-carbs" required min="0">
-            </div>
-            <div class="input-group">
-                <label>Fats (g)</label>
-                <input type="number" id="food-fats" required min="0">
-            </div>
-            <button type="submit">Add Food</button>
-        </form>
-    </div>
-
-    <!-- Food Log Table -->
-    <div class="card">
-        <h3>Today's Log</h3>
+      <div id="log-count" style="font-weight: 600; color: var(--muted); margin-bottom: 10px;">Showing 0 entries</div>
+      <div style="overflow-x: auto;">
         <table>
-            <thead>
-                <tr>
-                    <th>Food</th>
-                    <th>Calories</th>
-                    <th>Protein</th>
-                    <th>Carbs</th>
-                    <th>Fats</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="food-log-body">
-                <!-- Food items will be inserted here -->
-            </tbody>
+          <thead>
+            <tr>
+              <th>Food</th>
+              <th>Meal</th>
+              <th>Cals</th>
+              <th>Protein</th>
+              <th>Carbs</th>
+              <th>Fats</th>
+              <th>Logged By</th>
+            </tr>
+          </thead>
+          <tbody id="food-log-body">
+            <!-- Dynamic rows inserted here -->
+          </tbody>
         </table>
+      </div>
+      <div id="empty-state" class="empty-state" style="display: none;">
+        No food items found matching your filters.
+      </div>
     </div>
+  </section>
+
+  <!-- VIEW 2: ADD FOOD -->
+  <section id="view-add" class="view">
+    <div class="card">
+      <h2 style="margin-bottom: 20px;">Log a Food Entry</h2>
+      <form id="food-form" style="display: flex; flex-direction: column; gap: 16px;">
+        
+        <div class="form-group">
+          <label for="user_name">Your Name *</label>
+          <input type="text" id="user_name" required maxlength="50" placeholder="e.g. Alex">
+        </div>
+
+        <div class="form-group">
+          <label for="food_name">Food Name *</label>
+          <input type="text" id="food_name" required maxlength="100" placeholder="e.g. Grilled Chicken Breast">
+        </div>
+
+        <!-- Pick-from-a-list column (Criterion 2) -->
+        <div class="form-group">
+          <label for="meal">Meal Category *</label>
+          <select id="meal" required>
+            <option value="">Choose meal...</option>
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snack</option>
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">
+          <div class="form-group">
+            <label for="calories">Calories (kcal) *</label>
+            <input type="number" id="calories" min="0" max="10000" required placeholder="350">
+          </div>
+          <div class="form-group">
+            <label for="protein">Protein (g) *</label>
+            <input type="number" id="protein" min="0" max="1000" required placeholder="30">
+          </div>
+          <div class="form-group">
+            <label for="carbs">Carbs (g) *</label>
+            <input type="number" id="carbs" min="0" max="1000" required placeholder="10">
+          </div>
+          <div class="form-group">
+            <label for="fats">Fats (g) *</label>
+            <input type="number" id="fats" min="0" max="1000" required placeholder="5">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top: 10px;">Save Food Log</button>
+      </form>
+    </div>
+  </section>
 </div>
 
 <script>
-    // State to hold our logged foods
-    let foodLog = [];
+  // Supabase Client Setup
+  const SUPABASE_URL = "YOUR_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Form submission listener
-    document.getElementById('food-form').addEventListener('submit', function(e) {
-        e.preventDefault(); // Prevent page refresh
-        
-        // Get values from form
-        const foodItem = {
-            id: Date.now(), // unique ID for deletion
-            name: document.getElementById('food-name').value,
-            cals: parseInt(document.getElementById('food-cals').value) || 0,
-            protein: parseInt(document.getElementById('food-protein').value) || 0,
-            carbs: parseInt(document.getElementById('food-carbs').value) || 0,
-            fats: parseInt(document.getElementById('food-fats').value) || 0
-        };
+  // DOM Elements
+  const btnViewLogs = document.getElementById('btn-view-logs');
+  const btnAddLog = document.getElementById('btn-add-log');
+  const viewDisplay = document.getElementById('view-display');
+  const viewAdd = document.getElementById('view-add');
 
-        // Add to array and update UI
-        foodLog.push(foodItem);
-        this.reset(); // Clear form
-        updateUI();
+  const filterMeal = document.getElementById('filter-meal');
+  const sortBy = document.getElementById('sort-by');
+  const searchInput = document.getElementById('search-input');
+  
+  const foodLogBody = document.getElementById('food-log-body');
+  const emptyState = document.getElementById('empty-state');
+  const logCount = document.getElementById('log-count');
+
+  // Navigation Logic (Criterion 3)
+  btnViewLogs.addEventListener('click', () => {
+    btnViewLogs.classList.add('active');
+    btnAddLog.classList.remove('active');
+    viewDisplay.classList.add('active');
+    viewAdd.classList.remove('active');
+    fetchLogs();
+  });
+
+  btnAddLog.addEventListener('click', () => {
+    btnAddLog.classList.add('active');
+    btnViewLogs.classList.remove('active');
+    viewAdd.classList.add('active');
+    viewDisplay.classList.remove('active');
+  });
+
+  // Fetch data from database & apply operations (Criterion 4 & Criterion 5)
+  async function fetchLogs() {
+    foodLogBody.innerHTML = '<tr><td colspan="7">Loading logs...</td></tr>';
+    emptyState.style.display = 'none';
+
+    const [sortCol, sortDir] = sortBy.value.split('-');
+
+    let query = db
+      .from('food_logs')
+      .select('*')
+      .order(sortCol, { ascending: sortDir === 'asc' })
+      .limit(300); // Caps query safely at 300 records (Criterion 5)
+
+    // Filter Operation
+    if (filterMeal.value !== 'all') {
+      query = query.eq('meal', filterMeal.value);
+    }
+
+    // Search Operation
+    if (searchInput.value.trim() !== '') {
+      query = query.ilike('food_name', `%${searchInput.value.trim()}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      alert("Error fetching database records: " + error.message);
+      return;
+    }
+
+    renderTable(data);
+  }
+
+  function renderTable(logs) {
+    foodLogBody.innerHTML = '';
+    
+    // Calculate Totals & Count (Criterion 4)
+    let cals = 0, p = 0, c = 0, f = 0;
+    logs.forEach(item => {
+      cals += Number(item.calories || 0);
+      p += Number(item.protein || 0);
+      c += Number(item.carbs || 0);
+      f += Number(item.fats || 0);
     });
 
-    // Function to remove an item
-    function deleteFood(id) {
-        foodLog = foodLog.filter(food => food.id !== id);
-        updateUI();
+    document.getElementById('total-cals').textContent = cals;
+    document.getElementById('total-protein').textContent = p;
+    document.getElementById('total-carbs').textContent = c;
+    document.getElementById('total-fats').textContent = f;
+    logCount.textContent = `Showing ${logs.length} logged items`;
+
+    // Awkward Case: Empty Table (Criterion 5)
+    if (logs.length === 0) {
+      emptyState.style.display = 'block';
+      return;
     }
 
-    // Main function to update calculations and HTML
-    function updateUI() {
-        updateDashboard();
-        renderTable();
+    emptyState.style.display = 'none';
+    
+    logs.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${escapeHTML(item.food_name)}</strong></td>
+        <td><span class="badge">${escapeHTML(item.meal)}</span></td>
+        <td>${item.calories}</td>
+        <td>${item.protein}g</td>
+        <td>${item.carbs}g</td>
+        <td>${item.fats}g</td>
+        <td>${escapeHTML(item.user_name)}</td>
+      `;
+      foodLogBody.appendChild(tr);
+    });
+  }
+
+  // Handle Form Submission (Criterion 5)
+  document.getElementById('food-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const user_name = document.getElementById('user_name').value.trim();
+    const food_name = document.getElementById('food_name').value.trim();
+    const meal = document.getElementById('meal').value;
+    const calories = parseInt(document.getElementById('calories').value, 10);
+    const protein = parseInt(document.getElementById('protein').value, 10);
+    const carbs = parseInt(document.getElementById('carbs').value, 10);
+    const fats = parseInt(document.getElementById('fats').value, 10);
+
+    // Submission Guards
+    if (!user_name || !food_name || !meal || isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fats)) {
+      alert("Please fill in all fields correctly.");
+      return;
     }
 
-    // Update the top dashboard numbers
-    function updateDashboard() {
-        // Calculate totals
-        let totalCals = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
-        
-        foodLog.forEach(food => {
-            totalCals += food.cals;
-            totalProtein += food.protein;
-            totalCarbs += food.carbs;
-            totalFats += food.fats;
-        });
+    const { error } = await db.from('food_logs').insert([
+      { user_name, food_name, meal, calories, protein, carbs, fats }
+    ]);
 
-        // Update DOM elements for totals
-        document.getElementById('total-cals').textContent = totalCals;
-        document.getElementById('total-protein').textContent = totalProtein;
-        document.getElementById('total-carbs').textContent = totalCarbs;
-        document.getElementById('total-fats').textContent = totalFats;
-
-        // Sync Goal Inputs to Dashboard Display
-        document.getElementById('display-goal-cals').textContent = document.getElementById('goal-cals').value;
-        document.getElementById('display-goal-protein').textContent = document.getElementById('goal-protein').value;
-        document.getElementById('display-goal-carbs').textContent = document.getElementById('goal-carbs').value;
-        document.getElementById('display-goal-fats').textContent = document.getElementById('goal-fats').value;
+    if (error) {
+      alert("Error saving to database: " + error.message);
+    } else {
+      this.reset();
+      btnViewLogs.click(); // Switch view to table view
     }
+  });
 
-    // Render the list of foods into the table
-    function renderTable() {
-        const tbody = document.getElementById('food-log-body');
-        tbody.innerHTML = ''; // Clear current table
+  // Utility to prevent XSS
+  function escapeHTML(str) {
+    return String(str).replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    })[m]);
+  }
 
-        foodLog.forEach(food => {
-            const tr = document.createElement('tr');
-            
-            tr.innerHTML = `
-                <td><strong>${food.name}</strong></td>
-                <td>${food.cals}</td>
-                <td>${food.protein}g</td>
-                <td>${food.carbs}g</td>
-                <td>${food.fats}g</td>
-                <td>
-                    <button class="delete-btn" onclick="deleteFood(${food.id})">Delete</button>
-                </td>
-            `;
-            
-            tbody.appendChild(tr);
-        });
-    }
+  // Event Listeners for Filters & Search
+  filterMeal.addEventListener('change', fetchLogs);
+  sortBy.addEventListener('change', fetchLogs);
+  
+  let timeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(fetchLogs, 300);
+  });
+
+  // Initial Load
+  fetchLogs();
 </script>
-
 </body>
 </html>
