@@ -33,7 +33,6 @@
     .container { max-width: 900px; margin: 0 auto; }
     h1 { text-align: center; margin-bottom: 20px; }
 
-    /* Navigation / View Switcher */
     nav {
       display: flex;
       justify-content: center;
@@ -70,7 +69,6 @@
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
-    /* Dashboard & Controls */
     .dashboard {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -94,7 +92,6 @@
       align-items: center;
     }
 
-    /* Form Elements */
     .form-group { display: flex; flex-direction: column; gap: 4px; }
     label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
     input, select {
@@ -117,7 +114,6 @@
     }
     button.btn-primary:hover { background-color: var(--primary-hover); }
 
-    /* Table Styles */
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
     th { font-weight: 600; color: var(--muted); }
@@ -132,13 +128,11 @@
       font-weight: 600;
     }
 
-    /* Empty and Error States */
     .empty-state {
       text-align: center;
       padding: 40px 20px;
       color: var(--muted);
     }
-    .char-count { font-size: 0.8rem; color: var(--muted); text-align: right; }
     
     @media (max-width: 768px) {
       .controls-grid { grid-template-columns: 1fr; }
@@ -150,9 +144,8 @@
 <body>
 
 <div class="container">
-  <h1>Macro & Calorie Tracker</h1>
+  <h1>Shared Macro & Calorie Tracker</h1>
 
-  <!-- Navigation View Switcher (Criterion 3) -->
   <nav>
     <button class="nav-btn active" id="btn-view-logs">View Food Log</button>
     <button class="nav-btn" id="btn-add-log">Log New Food</button>
@@ -242,7 +235,7 @@
         
         <div class="form-group">
           <label for="user_name">Your Name *</label>
-          <input type="text" id="user_name" required maxlength="50" placeholder="e.g. Alex">
+          <input type="text" id="user_name" required maxlength="50" placeholder="e.g. Bob">
         </div>
 
         <div class="form-group">
@@ -250,7 +243,6 @@
           <input type="text" id="food_name" required maxlength="100" placeholder="e.g. Grilled Chicken Breast">
         </div>
 
-        <!-- Pick-from-a-list column (Criterion 2) -->
         <div class="form-group">
           <label for="meal">Meal Category *</label>
           <select id="meal" required>
@@ -288,7 +280,9 @@
 </div>
 
 <script>
-  // Supabase Client Setup
+  // ==========================================
+  // MUST REPLACE THESE WITH YOUR ACTUAL KEYS!
+  // ==========================================
   const SUPABASE_URL = "YOUR_SUPABASE_URL";
   const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -307,13 +301,13 @@
   const emptyState = document.getElementById('empty-state');
   const logCount = document.getElementById('log-count');
 
-  // Navigation Logic (Criterion 3)
+  // Navigation Logic
   btnViewLogs.addEventListener('click', () => {
     btnViewLogs.classList.add('active');
     btnAddLog.classList.remove('active');
     viewDisplay.classList.add('active');
     viewAdd.classList.remove('active');
-    fetchLogs();
+    fetchLogs(); // Automatically fetch freshest data when switching to this view
   });
 
   btnAddLog.addEventListener('click', () => {
@@ -323,7 +317,7 @@
     viewDisplay.classList.remove('active');
   });
 
-  // Fetch data from database & apply operations (Criterion 4 & Criterion 5)
+  // Fetch data from database
   async function fetchLogs() {
     foodLogBody.innerHTML = '<tr><td colspan="7">Loading logs...</td></tr>';
     emptyState.style.display = 'none';
@@ -334,14 +328,12 @@
       .from('food_logs')
       .select('*')
       .order(sortCol, { ascending: sortDir === 'asc' })
-      .limit(300); // Caps query safely at 300 records (Criterion 5)
+      .limit(300);
 
-    // Filter Operation
     if (filterMeal.value !== 'all') {
       query = query.eq('meal', filterMeal.value);
     }
 
-    // Search Operation
     if (searchInput.value.trim() !== '') {
       query = query.ilike('food_name', `%${searchInput.value.trim()}%`);
     }
@@ -349,7 +341,8 @@
     const { data, error } = await query;
 
     if (error) {
-      alert("Error fetching database records: " + error.message);
+      console.error(error);
+      foodLogBody.innerHTML = `<tr><td colspan="7" style="color:red;">Error connecting to database. Did you add your URL and Keys?</td></tr>`;
       return;
     }
 
@@ -359,7 +352,6 @@
   function renderTable(logs) {
     foodLogBody.innerHTML = '';
     
-    // Calculate Totals & Count (Criterion 4)
     let cals = 0, p = 0, c = 0, f = 0;
     logs.forEach(item => {
       cals += Number(item.calories || 0);
@@ -374,7 +366,6 @@
     document.getElementById('total-fats').textContent = f;
     logCount.textContent = `Showing ${logs.length} logged items`;
 
-    // Awkward Case: Empty Table (Criterion 5)
     if (logs.length === 0) {
       emptyState.style.display = 'block';
       return;
@@ -397,7 +388,7 @@
     });
   }
 
-  // Handle Form Submission (Criterion 5)
+  // Handle Form Submission
   document.getElementById('food-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -409,32 +400,32 @@
     const carbs = parseInt(document.getElementById('carbs').value, 10);
     const fats = parseInt(document.getElementById('fats').value, 10);
 
-    // Submission Guards
     if (!user_name || !food_name || !meal || isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fats)) {
       alert("Please fill in all fields correctly.");
       return;
     }
 
+    // Insert payload into database
     const { error } = await db.from('food_logs').insert([
       { user_name, food_name, meal, calories, protein, carbs, fats }
     ]);
 
     if (error) {
-      alert("Error saving to database: " + error.message);
+      alert("Error saving to database. Did you run the SQL script? Error: " + error.message);
     } else {
       this.reset();
-      btnViewLogs.click(); // Switch view to table view
+      btnViewLogs.click(); // Automatically switches to the feed and triggers fetchLogs() so Bob can see what you just added
     }
   });
 
-  // Utility to prevent XSS
+  // Prevent HTML injections
   function escapeHTML(str) {
     return String(str).replace(/[&<>"']/g, m => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
     })[m]);
   }
 
-  // Event Listeners for Filters & Search
+  // Event Listeners for Filters
   filterMeal.addEventListener('change', fetchLogs);
   sortBy.addEventListener('change', fetchLogs);
   
